@@ -3,43 +3,62 @@
             [bifrost.core :refer :all]
             [clojure.core.async :as async]))
 
-(deftest async-interceptor-test
-  (testing "puts incoming requests onto its channel arg"
-    (let [ch (async/chan)
-          async-interceptor (async-interceptor ch)
-          request {:path-params {:foo "bar"}
-                   :request-method :get}]
-      (async/thread
-        ((:enter async-interceptor) {:request request}))
-      (let [[response-ch request-message] (async/alt!! ch ([r] r)
-                                                       (async/timeout 1000) ::timeout)]
-        (assert (not= request-message ::timeout))
+(deftest interceptor-test
+  (testing "adds a key to the context where the response channel is"
+    (let [key-test-ch (async/chan)
+          async-interceptor (interceptor key-test-ch)
+          enter (:enter async-interceptor)
+          out-ctx (enter {:request {:request-method :get}})]
+      (is (get-in out-ctx [:response-channels :key-test-ch]))))
+  (testing "puts just the bifrosted request onto the request part of the channel"
+    (let [request-only-test-ch (async/chan)
+          async-interceptor (interceptor request-only-test-ch)
+          enter (:enter async-interceptor)
+          request {:request-method :get
+                   :query-params {:test true}}
+          ctx {:request request}]
+      (enter ctx)
+      (let [[response-ch request] (async/<!! request-only-test-ch)]
+        (is (= request
+               (ctx->bifrost-request ctx))))))
+  (testing "takes a API-like response from the response-ch and puts a Ring-like response on the ctx"
+    (let [response-test-ch (async/chan)
+          async-interceptor (interceptor response-test-ch)
+          {:keys [enter leave]} async-interceptor
+          request {:request-method :get
+                   :bifrost-params {:test true}}
+          ctx {:request request}
+          middle-ctx (enter ctx)]
+      (let [[response-ch request] (async/<!! response-test-ch)]
+        (async/>!! response-ch {:status :ok :bridge-endpoints #{"Midgard" "Asgard"}})
+        (let [final-ctx (leave middle-ctx)]
+          (is (= 200 (get-in final-ctx [:response :status])))
+          (is (= {:bridge-endpoints #{"Midgard" "Asgard"}} (get-in final-ctx [:response :body])))))))
+  (testing "will respond with a timeout if nothing happens on the response ch"
+    (let [timeout-test-ch (async/chan)
+          async-interceptor (interceptor timeout-test-ch)
+          {:keys [enter leave]} async-interceptor
+          request {:request-method :get
+                   :bifrost-params {:test true}}
+          ctx {:request request}
+          middle-ctx (enter ctx)]
+      (let [[response-ch request] (async/<!! timeout-test-ch)]
+        (let [final-ctx (leave middle-ctx)]
+          (is (= 500 (get-in final-ctx [:response :status])))
+          (is (= "Timeout" (get-in final-ctx [:response :body])))))))
+  (testing "will forward the ctx through if the response channel has been closed"
+    (let [closed-test-ch (async/chan)
+          async-interceptor (interceptor closed-test-ch)
+          {:keys [enter leave]} async-interceptor
+          request {:request-method :get
+                   :bifrost-params {:test true}}
+          ctx {:request request}
+          _ (enter ctx)
+          otherwise-created-ctx {:response {:status :201 :body "Handled by someone else"}}]
+      (let [[response-ch request] (async/<!! closed-test-ch)]
         (async/close! response-ch)
-        (is (= (:path-params request) request-message)))))
-  (testing ":status :ok response results in 200 HTTP status response"
-    (let [ch (async/chan)
-          async-interceptor (async-interceptor ch)
-          request {:path-params {:foo "bar"}
-                   :request-method :get}
-          _ (async/take! ch (fn [[response-ch _]] (async/put! response-ch
-                                                              {:status :ok})))
-          interceptor-response-ch ((:enter async-interceptor) {:request request})]
-      (let [{:keys [response]} (async/alt!! interceptor-response-ch ([r] r)
-                                          (async/timeout 1000) ::timeout)]
-          (assert (not= response ::timeout))
-          (is (= 200 (:status response))))))
-  (testing ":status :error response results in 500 HTTP status response"
-    (let [ch (async/chan)
-          async-interceptor (async-interceptor ch)
-          request {:path-params {:foo "bar"}
-                   :request-method :get}
-          _ (async/take! ch (fn [[response-ch _]] (async/put! response-ch
-                                                              {:status :error})))
-          interceptor-response-ch ((:enter async-interceptor) {:request request})]
-      (let [{:keys [response]} (async/alt!! interceptor-response-ch ([r] r)
-                                          (async/timeout 1000) ::timeout)]
-          (assert (not= response ::timeout))
-          (is (= 500 (:status response)))))))
+        (let [final-ctx (leave otherwise-created-ctx)]
+          (is (= final-ctx otherwise-created-ctx)))))))
 
 (deftest params-map-test
   (testing "GET/DELETE merges bifrost-params -> path-params -> query-params"

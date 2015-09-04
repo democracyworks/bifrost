@@ -1,14 +1,9 @@
 (ns bifrost.core
-  (:require [io.pedestal.interceptor :refer [IntoInterceptor interceptor]]
+  (:require [io.pedestal.interceptor :as interceptor]
             [clojure.core.async :as async]
             [ring.util.response :as ring-resp]))
 
 (def ^:dynamic *response-timeout* 10000)
-
-(def timeout-response
-  {:status :error
-   :error {:type :timeout
-           :duration *response-timeout*}})
 
 (defn error-response->http-status
   [error-response]
@@ -43,24 +38,47 @@
                                (:path-params request)
                                (:bifrost-params request))))
 
-(defn async-interceptor
-  [channel]
-  (interceptor
-   {:enter
-    (fn [ctx]
-      (let [response-channel (async/chan 1)
-            request (:request ctx)]
-        (async/>!! channel [response-channel (params-map request)])
-        (async/go
-          (let [response (async/alt! (async/timeout *response-timeout*) timeout-response
-                                     response-channel ([r] r))
-                status (response->http-status response)]
-            (assoc ctx :response
-                   (-> response
-                       (dissoc :status)
-                       ring-resp/response
-                       (ring-resp/status status)))))))}))
+(defn ctx->bifrost-request [ctx]
+  (let [request (:request ctx)]
+    (assoc request :bifrost-params (params-map request))))
 
-(extend-protocol IntoInterceptor
-  clojure.core.async.impl.channels.ManyToManyChannel
-  (-interceptor [ch] (async-interceptor ch)))
+(def interceptor-xf
+  (map (fn [[response-ch ctx]]
+         [response-ch (ctx->bifrost-request ctx)])))
+
+(defn api-response->ctx
+  [api-response]
+  (let [status (response->http-status api-response)]
+    {:response (-> api-response
+                   (dissoc :status)
+                   ring-resp/response
+                   (ring-resp/status status))}))
+
+(def api-response-xf (map api-response->ctx))
+
+(defn async-interceptor
+  ([channel]
+   (async-interceptor channel (gensym)))
+  ([channel response-channel-key]
+   (async-interceptor channel response-channel-key (map identity)))
+  ([channel response-channel-key response-channel-xf]
+   (let [response-channel (async/chan 1 response-channel-xf)]
+     (interceptor/interceptor
+      {:enter
+       (fn [ctx]
+         (async/>!! channel [response-channel ctx])
+         (assoc-in ctx [:response-channels response-channel-key] response-channel))
+       :leave
+       (fn [ctx]
+         (if-let [response (async/alt!!
+                             (async/timeout *response-timeout*) {:response {:status 500 :body "Timeout"}}
+                             response-channel ([r] r))]
+           (merge ctx response)
+           ctx))}))))
+
+(defmacro interceptor
+  [channel]
+  (let [response-channel-key (keyword channel)]
+    `(let [request-ch# (async/chan 1 interceptor-xf)]
+       (async/pipe request-ch# ~channel)
+       (async-interceptor request-ch# ~response-channel-key api-response-xf))))
