@@ -3,7 +3,7 @@
 > Be warned, I shall uphold my sacred oath to protect this realm as its
 > gatekeeper. If your return threatens the safety of Asgard, my gate will
 > remain shut and you will be left to perish on the cold waste of Jotunheim.
->   - Heimdall
+>   \- Heimdall
 
 A Clojure library for building HTTP API gateways using Pedestal and core.async.
 
