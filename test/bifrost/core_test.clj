@@ -53,8 +53,9 @@
           request {:request-method :get
                    :bifrost-params {:test true}}
           ctx {:request request}
-          _ (enter ctx)
-          otherwise-created-ctx {:response {:status :201 :body "Handled by someone else"}}]
+          middle-ctx (enter ctx)
+          otherwise-created-ctx (merge middle-ctx
+                                       {:response {:status :201 :body "Handled by someone else"}})]
       (let [[response-ch request] (async/<!! closed-test-ch)]
         (async/close! response-ch)
         (let [final-ctx (leave otherwise-created-ctx)]

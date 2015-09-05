@@ -62,19 +62,19 @@
   ([channel response-channel-key]
    (async-interceptor channel response-channel-key (map identity)))
   ([channel response-channel-key response-channel-xf]
-   (let [response-channel (async/chan 1 response-channel-xf)]
-     (interceptor/interceptor
-      {:enter
-       (fn [ctx]
+   (interceptor/interceptor
+    {:enter
+     (fn [ctx]
+       (let [response-channel (async/chan 1 response-channel-xf)]
          (async/>!! channel [response-channel ctx])
-         (assoc-in ctx [:response-channels response-channel-key] response-channel))
-       :leave
-       (fn [ctx]
-         (if-let [response (async/alt!!
-                             (async/timeout *response-timeout*) {:response {:status 500 :body "Timeout"}}
-                             response-channel ([r] r))]
-           (merge ctx response)
-           ctx))}))))
+         (assoc-in ctx [:response-channels response-channel-key] response-channel)))
+     :leave
+     (fn [ctx]
+       (if-let [response (async/alt!!
+                           (async/timeout *response-timeout*) {:response {:status 500 :body "Timeout"}}
+                           (get-in ctx [:response-channels response-channel-key]) ([r] r))]
+         (merge ctx response)
+         ctx))})))
 
 (defmacro interceptor
   [channel]
