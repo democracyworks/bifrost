@@ -11,61 +11,85 @@ A Clojure library for building HTTP API gateways using Pedestal and core.async.
 
 Add the library as a dependency in your project.clj:
 
-`[democracyworks/bifrost "0.1.0"]`
-
-Require the core namespace in your pedestal service namespace (no need to alias
-it or refer anything):
-
+```clojure
+[democracyworks/bifrost "0.1.0"]
 ```
+
+Require the core namespace in your pedestal service namespace:
+
+```clojure
 (ns my-gateway.service
-  (:require [bifrost.core]))
+  (:require [bifrost.core :as bifrost]))
 ```
 
-Then just put core.async channels in your routes map where interceptors would
-normally go. It's up to you to have something take from these channels, but the
-intent is that whatever service you're gatewaying is on the other end.
+Then you can use the `bifrost/interceptor` macro to create
+core.async-backed interceptors.
 
-Bifrost will do the following with your core.async channels:
+```clojure
+(def fibonacci-service (cloure.core.async/chan))
 
-* Wrap them in an `:enter` interceptor that, on each HTTP request does the
-  following:
-    * On GET and DELETE
-        * Merges `:bifrost-params` -> `:path-params` -> `:query-params` (so
-        `:bifrost-params` clobbers `:path-params` which clobbers
-        `:query-params`) and puts the resulting map into a vector like:
-        `[response-channel params-map]`. (The `response-channel` is created
-        for you.)
-    * On POST, PUT, and PATCH
-        * Merges `:bifrost-params` -> `:path-params` -> `:body-params` ->
-        `:json-params` -> `:transit-params` -> `:edn-params` -> `:form-params`
-        -> `:query-params` and puts the resulting map into a vector like:
-        `[response-channel params-map]`. (The `response-channel` is created for
-        you.)
-    * The vector is then put on the core.async channel from your route map.
-    Whatever takes it on the other end is expected to process the `params-map`
-    and put a response on the `response-channel`.
-    * Responses should be EDN maps that look like the following:
-    ```
-    {:status :ok} ; plus any other keys and values you'd like to add
-    ```
-        * `:status` can be any of:
-            * `:ok` - HTTP 200 response
-            * `:created` - HTTP 201 response
-            * `:error`
-                * With `:error`, you can add an optional `:type` key whose value
-                can be any of:
-                    * `:semantic` - HTTP 400 response
-                    * `:validation` - HTTP 400 response
-                    * `:not-found` - HTTP 404 response
-                    * `:server` - HTTP 500 response
-                    * if `:type` is ommitted - HTTP 500 response
-                    * (more to come)
+(def fibonnaci-interceptor (bifrost/interceptor fibonacci-service))
+```
+
+Bifrost interceptors have `enter` and `leave` functions.
+
+The `enter` function puts a message on the channel you provide. The
+message is a two-element vector. The first element is a channel to put
+a response onto, and the second element is the context's request
+transformed into a bifrost request. The enter function returns the
+context with the response channel as a key on `:response-channels`.
+
+The `leave` function attempts to take from the response channel. If
+it's already closed (e.g., if you've provided another interceptor in
+the chain that deals with its contents) it will forward on the context
+without change. If can take from the response channel, it will
+transform the response into a context with a response and merge it
+with the incoming context. If it cannot take from the response channel
+within the timeout, it will create a 500 response.
+
+Bifrost requests are Pedestal requests with the following changes:
+
+* On GET and DELETE
+  * Merges `:bifrost-params` -> `:path-params` -> `:query-params` (so
+    `:bifrost-params` clobbers `:path-params` which clobbers
+    `:query-params`) and puts the resulting map into a vector like:
+    `[response-channel params-map]`. (The `response-channel` is
+    created for you.)
+* On POST, PUT, and PATCH
+  * Merges `:bifrost-params` -> `:path-params` -> `:body-params` ->
+    `:json-params` -> `:transit-params` -> `:edn-params` ->
+    `:form-params` -> `:query-params` and puts the resulting map into
+    a vector like: `[response-channel params-map]`. (The
+    `response-channel` is created for you.)
+
+Responses should be EDN maps that look like the following:
+
+```clojure
+{:status :ok} ; plus any other keys and values you'd like to add
+```
+
+`:status` can be any of:
+    * `:ok` - HTTP 200 response
+    * `:created` - HTTP 201 response
+    * `:error`
+    * With `:error`, you can add an optional `:type` key whose value
+      can be any of:
+      * `:semantic` - HTTP 400 response
+      * `:validation` - HTTP 400 response
+      * `:not-found` - HTTP 404 response
+      * `:server` - HTTP 500 response
+      * if `:type` is ommitted - HTTP 500 response
+      * (more to come)
 
 If you want to add anything else to the `params-map`, then just put an
 interceptor in front of your core.async interceptor that adds keys & values to
 the `[:request :bifrost-params]` key path in the context.
 Bifrost will then merge the `:bifrost-params` value into everything
 else so those keys will clobber the others in the final `params-map`.
+
+The `async-interceptor` function is available if you want more control
+over what happens to the messages sent and consumed by the
+interceptor.
 
 ### Update Interceptors
 
