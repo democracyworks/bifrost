@@ -5,4 +5,5 @@
             :url "http://www.mozilla.org/MPL/2.0/"}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
-                 [io.pedestal/pedestal.service "0.4.0"]])
+                 [io.pedestal/pedestal.service "0.4.0"]]
+  :deploy-repositories {"releases" :clojars})
