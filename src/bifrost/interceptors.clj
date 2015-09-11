@@ -13,10 +13,12 @@
               target-context-path (cons context-key target-key-path)
               old-value (get-in ctx source-context-path)
               new-value (apply f old-value args)
-              new-ctx (assoc-in ctx target-context-path new-value)]
-          (if (= source-context-path target-context-path)
+              new-ctx (assoc-in ctx target-context-path new-value)
+              source-parent-keypath (butlast source-context-path)]
+          (if (or (= source-context-path target-context-path)
+                  (not (map? (get-in new-ctx source-parent-keypath))))
             new-ctx
-            (update-in new-ctx (butlast source-context-path)
+            (update-in new-ctx source-parent-keypath
                        dissoc (last source-context-path)))))})))
 
 (defn update-in-request
