@@ -1,4 +1,4 @@
-(defproject democracyworks/bifrost "0.1.1"
+(defproject democracyworks/bifrost "0.1.2-SNAPSHOT"
   :description "Library for writing HTTP API gateways with Pedestal & core.async"
   :url "https://github.com/democracyworks/bifrost"
   :license {:name "Mozilla Public License"
