@@ -1,5 +1,12 @@
 # Change Log
 
+## Changes between 0.1.3 and 0.1.4
+
+* Fixed a bug in the `bifrost.interceptors/update-*` interceptors where they
+assumed that the updated value would always be a map and thus could have `dissoc`
+called on it. But that's a bad assumption and bifrost now checks whether or not
+it's a map instead of crashing with a cryptic cast exception.
+
 ## Changes between 0.1.2 and 0.1.3
 
 * Updated a test for the 0.1.2 change timeout status change.
