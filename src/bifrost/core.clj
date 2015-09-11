@@ -70,7 +70,7 @@
      :leave
      (fn [ctx]
        (if-let [response (async/alt!!
-                           (async/timeout *response-timeout*) {:response {:status 500 :body "Timeout"}}
+                           (async/timeout *response-timeout*) {:response {:status 504 :body "Timeout"}}
                            (get-in ctx [:response-channels response-channel-key]) ([r] r))]
          (merge ctx response)
          ctx))})))
