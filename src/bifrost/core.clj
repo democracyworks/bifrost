@@ -39,8 +39,7 @@
                                (:bifrost-params request))))
 
 (defn ctx->bifrost-request [ctx]
-  (let [request (:request ctx)]
-    (assoc request :bifrost-params (params-map request))))
+  (params-map (:request ctx)))
 
 (def interceptor-xf
   (map (fn [[response-ch ctx]]
