@@ -44,10 +44,10 @@ context with the response channel as a key on `:response-channels`.
 The `leave` function attempts to take from the response channel. If
 it's already closed (e.g., if you've provided another interceptor in
 the chain that deals with its contents) it will forward on the context
-without change. If can take from the response channel, it will
+without change. If it can take from the response channel, it will
 transform the response into a context with a response and merge it
 with the incoming context. If it cannot take from the response channel
-within the timeout, it will create a 500 response.
+within the timeout, it will create a 504 response.
 
 Bifrost requests are Pedestal requests with the following changes:
 
@@ -80,6 +80,7 @@ Responses should be EDN maps that look like the following:
       * `:validation` - HTTP 400 response
       * `:not-found` - HTTP 404 response
       * `:server` - HTTP 500 response
+      * `:timeout` - HTTP 504 response
       * if `:type` is ommitted - HTTP 500 response
       * (more to come)
 
@@ -102,9 +103,9 @@ them over the core.async channels in your routes.
 Specifically:
 
 * `update-in-request`
-    * 2-arity version takes a key path (like `get-in`) and a function
+    * 2-arity version takes a key path (like `get-in`) and a function.
     * 3+-arity version takes a source key path, a target key path, a function,
-    and any additional args to that function
+    and any additional args to that function.
     * It returns a before interceptor that gets the value at (source-)key-path
     in the request, calls the function argument on it as the first arg, and then
     assoc's the return value into the request at (target-)key-path.
@@ -118,7 +119,7 @@ Use of these interceptors is optional.
 
 ## License
 
-Copyright © 2015 Democracy Works, Inc.
+Copyright © 2015-2016 Democracy Works, Inc.
 
 Distributed under the Mozilla Public License either version 2.0 or (at
 your option) any later version.
