@@ -1,5 +1,14 @@
 # Change Log
 
+## Changes between 0.1.4 and 0.1.5
+
+* Added a new optional argument to `bifrost.core/interceptor` and
+`bifrost.core/async-interceptor` called `timeout` that allows specifying how
+long bifrost should wait for a RabbitMQ response before giving up and putting a
+504 Gateway Timeout response into the context. Timeouts are specified in
+milliseconds. If not provided, they default to 10,000 milliseconds, just like
+before. This should be a non-breaking change.
+
 ## Changes between 0.1.3 and 0.1.4
 
 * Fixed a bug in the `bifrost.interceptors/update-*` interceptors where they
