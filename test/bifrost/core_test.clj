@@ -45,7 +45,7 @@
       (let [[response-ch request] (async/<!! timeout-test-ch)]
         (let [final-ctx (leave middle-ctx)]
           (is (= 504 (get-in final-ctx [:response :status])))
-          (is (= "Timeout" (get-in final-ctx [:response :body])))))))
+          (is (= "Bifrost timeout" (get-in final-ctx [:response :body])))))))
   (testing "will forward the ctx through if the response channel has been closed"
     (let [closed-test-ch (async/chan)
           async-interceptor (interceptor closed-test-ch)
