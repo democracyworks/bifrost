@@ -49,13 +49,13 @@
                    ring-resp/response
                    (ring-resp/status status))}))
 
-(defn async-interceptor
+(defn interceptor
   ([f]
-   (async-interceptor f (gensym)))
+   (interceptor f (gensym)))
   ([f response-channel-key]
-   (async-interceptor f
-                      response-channel-key
-                      default-timeout))
+   (interceptor f
+                response-channel-key
+                default-timeout))
   ([f response-channel-key timeout]
    (interceptor/interceptor
     {:enter
