@@ -43,11 +43,13 @@
 
 (defn api-response->ctx
   [api-response]
-  (let [status (response->http-status api-response)]
-    {:response (-> api-response
-                   (dissoc :status)
-                   ring-resp/response
-                   (ring-resp/status status))}))
+  (if (nil? api-response)
+    {:response {:status :201, :body "Handled by someone else"}}
+    (let [status (response->http-status api-response)]
+      {:response (-> api-response
+                     (dissoc :status)
+                     ring-resp/response
+                     (ring-resp/status status))})))
 
 (defn interceptor
   ([f]
