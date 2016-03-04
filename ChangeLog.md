@@ -1,5 +1,20 @@
 # Change Log
 
+## Changes between 0.1.5 and HEAD
+
+**This is a breaking change.**
+
+* Change `bifrost.core/interceptor` to work with functions that return
+  core.async channels. This makes it less dependent on Kehaar's
+  message format. To change existing interceptors, replace the
+  channels passed as arguments with either functions returned by
+  `kehaar.wire-up/async->fn` or
+  `kehaar.power/defn-external-service`.
+* Removed `bifrost.core/interceptor-xf`,
+  `bifrost.core/api-response-xf`, and
+  `bifrost.core/async-interceptor`.
+* Converted `bifrost.core/interceptor` from a macro to a function.
+
 ## Changes between 0.1.4 and 0.1.5
 
 * Added a new optional argument to `bifrost.core/interceptor` and

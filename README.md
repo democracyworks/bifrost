@@ -24,22 +24,24 @@ Require the core namespace in your pedestal service namespace:
   (:require [bifrost.core :as bifrost]))
 ```
 
-Then you can use the `bifrost/interceptor` macro to create
+Then you can use the `bifrost/interceptor` function to create
 core.async-backed interceptors.
 
 ```clojure
-(def fibonacci-service (cloure.core.async/chan))
+(defn fibonacci-service [n]
+  (clojure.core.async/go
+    (clojure.core.async/<! (clojure.core.async/timeout 1000))
+    (fib n)))
 
 (def fibonnaci-interceptor (bifrost/interceptor fibonacci-service))
 ```
 
 Bifrost interceptors have `enter` and `leave` functions.
 
-The `enter` function puts a message on the channel you provide. The
-message is a two-element vector. The first element is a channel to put
-a response onto, and the second element is the context's request
-transformed into a bifrost request. The enter function returns the
-context with the response channel as a key on `:response-channels`.
+The `enter` function calls the function you provide. It should
+immediately return a core.async channel, called the *response
+channel*. The enter function returns the context with the response
+channel as a key on `:response-channels`.
 
 The `leave` function attempts to take from the response channel. If
 it's already closed (e.g., if you've provided another interceptor in
@@ -54,15 +56,12 @@ Bifrost requests are Pedestal requests with the following changes:
 * On GET and DELETE
   * Merges `:bifrost-params` -> `:path-params` -> `:query-params` (so
     `:bifrost-params` clobbers `:path-params` which clobbers
-    `:query-params`) and puts the resulting map into a vector like:
-    `[response-channel params-map]`. (The `response-channel` is
-    created for you.)
+    `:query-params`) and calls the function with the `params-map`.
 * On POST, PUT, and PATCH
   * Merges `:bifrost-params` -> `:path-params` -> `:body-params` ->
     `:json-params` -> `:transit-params` -> `:edn-params` ->
-    `:form-params` -> `:query-params` and puts the resulting map into
-    a vector like: `[response-channel params-map]`. (The
-    `response-channel` is created for you.)
+    `:form-params` -> `:query-params` and calls the function with the
+    `params-map`.
 
 Responses should be EDN maps that look like the following:
 
@@ -85,8 +84,8 @@ Responses should be EDN maps that look like the following:
       * (more to come)
 
 If you want to add anything else to the `params-map`, then just put an
-interceptor in front of your core.async interceptor that adds keys & values to
-the `[:request :bifrost-params]` key path in the context.
+interceptor in front of your core.async interceptor that adds keys &
+values to the `[:request :bifrost-params]` key path in the context.
 Bifrost will then merge the `:bifrost-params` value into everything
 else so those keys will clobber the others in the final `params-map`.
 

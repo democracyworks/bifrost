@@ -5,50 +5,51 @@
 
 (deftest interceptor-test
   (testing "adds a key to the context where the response channel is"
-    (let [key-test-ch (async/chan)
-          async-interceptor (interceptor key-test-ch)
+    (let [key-test-fn (fn [x] (async/go x))
+          async-interceptor (interceptor key-test-fn :key-test-ch)
           enter (:enter async-interceptor)
           out-ctx (enter {:request {:request-method :get}})]
       (is (get-in out-ctx [:response-channels :key-test-ch]))))
-  (testing "puts just the bifrosted request onto the request part of the channel"
-    (let [request-only-test-ch (async/chan)
-          async-interceptor (interceptor request-only-test-ch)
+  (testing "call the function with just the bifrosted request"
+    (let [request-storage (atom ::unrequested)
+          request-only-test-fn (fn [x] (reset! request-storage x) (async/go x))
+          async-interceptor (interceptor request-only-test-fn)
           enter (:enter async-interceptor)
           request {:request-method :get
                    :query-params {:test true}}
           ctx {:request request}]
       (enter ctx)
-      (let [[response-ch request] (async/<!! request-only-test-ch)]
-        (is (= request
-               (ctx->bifrost-request ctx))))))
+      (let [request @request-storage]
+        (is (= request (ctx->bifrost-request ctx))))))
   (testing "takes a API-like response from the response-ch and puts a Ring-like response on the ctx"
-    (let [response-test-ch (async/chan)
-          async-interceptor (interceptor response-test-ch)
+    (let [response-test-fn (fn [x]
+                             (async/go {:status :ok
+                                        :bridge-endpoints #{"Midgard" "Asgard"}}))
+          async-interceptor (interceptor response-test-fn)
           {:keys [enter leave]} async-interceptor
           request {:request-method :get
                    :bifrost-params {:test true}}
           ctx {:request request}
-          middle-ctx (enter ctx)]
-      (let [[response-ch request] (async/<!! response-test-ch)]
-        (async/>!! response-ch {:status :ok :bridge-endpoints #{"Midgard" "Asgard"}})
-        (let [final-ctx (leave middle-ctx)]
-          (is (= 200 (get-in final-ctx [:response :status])))
-          (is (= {:bridge-endpoints #{"Midgard" "Asgard"}} (get-in final-ctx [:response :body])))))))
+          middle-ctx (enter ctx)
+          final-ctx (leave middle-ctx)]
+      (is (= 200 (get-in final-ctx [:response :status])))
+      (is (= {:bridge-endpoints #{"Midgard" "Asgard"}} (get-in final-ctx [:response :body])))))
   (testing "will respond with a timeout if nothing happens on the response ch"
-    (let [timeout-test-ch (async/chan)
-          async-interceptor (interceptor timeout-test-ch)
+    (let [timeout-test-fn (fn [x] (async/go (async/<! (async/timeout 100000)) x))
+          async-interceptor (interceptor timeout-test-fn)
           {:keys [enter leave]} async-interceptor
           request {:request-method :get
                    :bifrost-params {:test true}}
           ctx {:request request}
-          middle-ctx (enter ctx)]
-      (let [[response-ch request] (async/<!! timeout-test-ch)]
-        (let [final-ctx (leave middle-ctx)]
-          (is (= 504 (get-in final-ctx [:response :status])))
-          (is (= "Bifrost timeout" (get-in final-ctx [:response :body])))))))
+          middle-ctx (enter ctx)
+          final-ctx (leave middle-ctx)]
+      (is (= 504 (get-in final-ctx [:response :status])))
+      (is (= "Bifrost timeout" (get-in final-ctx [:response :body])))))
   (testing "will forward the ctx through if the response channel has been closed"
-    (let [closed-test-ch (async/chan)
-          async-interceptor (interceptor closed-test-ch)
+    (let [closed-test-fn (fn [x] (let [c (async/chan)]
+                                   (async/close! c)
+                                   c))
+          async-interceptor (interceptor closed-test-fn)
           {:keys [enter leave]} async-interceptor
           request {:request-method :get
                    :bifrost-params {:test true}}
@@ -56,10 +57,8 @@
           middle-ctx (enter ctx)
           otherwise-created-ctx (merge middle-ctx
                                        {:response {:status :201 :body "Handled by someone else"}})]
-      (let [[response-ch request] (async/<!! closed-test-ch)]
-        (async/close! response-ch)
-        (let [final-ctx (leave otherwise-created-ctx)]
-          (is (= final-ctx otherwise-created-ctx)))))))
+      (let [final-ctx (leave otherwise-created-ctx)]
+        (is (= otherwise-created-ctx final-ctx))))))
 
 (deftest params-map-test
   (testing "GET/DELETE merges bifrost-params -> path-params -> query-params"
