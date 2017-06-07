@@ -50,6 +50,7 @@
 
 (defn api-response->ctx
   [api-response]
+  (log/debug "bifrost got response:" (pr-str api-response))
   (let [status (response->http-status api-response)]
     {:response (-> api-response
                    (dissoc :status)
