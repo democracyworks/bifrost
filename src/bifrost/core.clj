@@ -1,12 +1,14 @@
 (ns bifrost.core
   (:require [io.pedestal.interceptor :as interceptor]
             [clojure.core.async :as async]
-            [ring.util.response :as ring-resp]))
+            [ring.util.response :as ring-resp]
+            [io.pedestal.log :as log]))
 
 (def default-timeout 10000)
 
 (defn error-response->http-status
   [error-response]
+  (log/debug "bifrost error response:" (pr-str error-response))
   (case (:type error-response)
     :semantic 400
     :validation 400
