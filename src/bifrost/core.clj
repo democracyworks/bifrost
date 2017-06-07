@@ -11,6 +11,7 @@
     :semantic 400
     :validation 400
     :not-found 404
+    :conflict 409
     :server 500
     :timeout 504
     500))
