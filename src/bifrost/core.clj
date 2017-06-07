@@ -66,7 +66,7 @@
   ([channel response-channel-key response-channel-xf]
    (async-interceptor channel
                       response-channel-key
-                      (map identity)
+                      response-channel-xf
                       default-timeout))
   ([channel response-channel-key response-channel-xf timeout]
    (interceptor/interceptor
