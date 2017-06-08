@@ -8,7 +8,6 @@
 
 (defn error-response->http-status
   [error-response]
-  (log/debug "bifrost error response:" (pr-str error-response))
   (case (:type error-response)
     :semantic 400
     :validation 400
@@ -50,7 +49,6 @@
 
 (defn api-response->ctx
   [api-response]
-  (log/debug "bifrost got response:" (pr-str api-response))
   (let [status (response->http-status api-response)]
     {:response (-> api-response
                    (dissoc :status)
