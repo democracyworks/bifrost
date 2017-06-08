@@ -20,7 +20,7 @@
 (defn response->http-status
   [response]
   (case (:status response)
-    :ok 200
+    (:ok :duplicate) 200
     :created 201
     :error (error-response->http-status (:error response))
     500))
