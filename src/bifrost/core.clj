@@ -1,8 +1,7 @@
 (ns bifrost.core
   (:require [io.pedestal.interceptor :as interceptor]
             [clojure.core.async :as async]
-            [ring.util.response :as ring-resp]
-            [io.pedestal.log :as log]))
+            [ring.util.response :as ring-resp]))
 
 (def default-timeout 10000)
 
