@@ -11,6 +11,7 @@
     :semantic 400
     :validation 400
     :not-found 404
+    :conflict 409
     :server 500
     :timeout 504
     500))
@@ -18,7 +19,7 @@
 (defn response->http-status
   [response]
   (case (:status response)
-    :ok 200
+    (:ok :duplicate) 200
     :created 201
     :error (error-response->http-status (:error response))
     500))
@@ -63,7 +64,7 @@
   ([channel response-channel-key response-channel-xf]
    (async-interceptor channel
                       response-channel-key
-                      (map identity)
+                      response-channel-xf
                       default-timeout))
   ([channel response-channel-key response-channel-xf timeout]
    (interceptor/interceptor
