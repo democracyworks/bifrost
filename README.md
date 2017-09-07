@@ -21,25 +21,55 @@ Require the core namespace in your pedestal service namespace:
 
 ```clojure
 (ns my-gateway.service
-  (:require [bifrost.core :as bifrost]))
+  (:require [bifrost.core :as bifrost]
+            [clojure.core.async :as async))
 ```
 
-Then you can use the `bifrost/interceptor` macro to create
-core.async-backed interceptors.
+Then you can use the `bifrost/interceptor` function to create
+core.async-backed interceptors. You can pass either function that
+returns a core.async channel, or a channel that you are handling
+otherwise.
+
+For example:
 
 ```clojure
-(def fibonacci-service (cloure.core.async/chan))
+(defn lookup-from-api [bifrost-request]
+  (let [return-channel (async/promise-chan)]
+    (async/thread
+      (async/put! return-channel {:status :ok :lookup (long-running-request)))
+    return-channel))
+
+(def lookup-interceptor (bifrost/interceptor lookup-from-api))
+```
+
+Or:
+
+```clojure
+(def fibonacci-service (async/chan))
+
+(async/go
+  (loop [[return-channel bifrost-request] (async/<! fibonacci-service)]
+    (->> bifrost-request
+         :number
+         calculate-fib
+         (assoc {:status :ok} :fib)
+         (async/put! return-channel))))
 
 (def fibonnaci-interceptor (bifrost/interceptor fibonacci-service))
 ```
 
 Bifrost interceptors have `enter` and `leave` functions.
 
-The `enter` function puts a message on the channel you provide. The
-message is a two-element vector. The first element is a channel to put
-a response onto, and the second element is the context's request
-transformed into a bifrost request. The enter function returns the
-context with the response channel as a key on `:response-channels`.
+When created with a channel-returning function, `enter` will call that
+function with the bifrost request.
+
+When created with a async channel, `enter` will put a message on that
+channel. The message is a two-element vector. The first element is a
+channel to put a response onto, and the second element is the
+context's request transformed into a bifrost request.
+
+Either way, the enter function returns the context with the response
+channel as a key on `:response-channels`.
 
 The `leave` function attempts to take from the response channel. If
 it's already closed (e.g., if you've provided another interceptor in

@@ -1,5 +1,13 @@
 # Change Log
 
+## Changes between 0.1.5 and HEAD
+
+* `bifrost.core/interceptor` is no longer a macro.
+* The first argument `bifrost.core/interceptor`, instead of being an
+  async channel, may be a function that will called with the bifrost
+  request and returns a core async channel that the result will
+  eventually be placed on.
+
 ## Changes between 0.1.4 and 0.1.5
 
 * Added a new optional argument to `bifrost.core/interceptor` and

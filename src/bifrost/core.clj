@@ -55,6 +55,10 @@
 
 (def api-response-xf (map api-response->ctx))
 
+(def timeout-response
+  {:response {:status 504
+              :body "Bifrost timeout"}})
+
 (defn async-interceptor
   ([channel]
    (async-interceptor channel (gensym)))
@@ -76,21 +80,47 @@
      (fn [ctx]
        (if-let [response (async/alt!!
                            (async/timeout timeout)
-                           {:response {:status 504
-                                       :body "Bifrost timeout"}}
+                           timeout-response
 
                            (get-in ctx [:response-channels response-channel-key])
                            ([r] r))]
          (merge ctx response)
          ctx))})))
 
-(defmacro interceptor
-  ([channel] `(interceptor ~channel ~default-timeout))
-  ([channel timeout]
-   (let [response-channel-key (keyword channel)]
-     `(let [request-ch# (async/chan 1 interceptor-xf)]
-        (async/pipe request-ch# ~channel)
-        (async-interceptor request-ch#
-                           ~response-channel-key
-                           api-response-xf
-                           ~timeout)))))
+(defn response-channel-key []
+  (keyword (gensym "bifrost-response-channel-")))
+
+(defn fn-interceptor
+  ([f timeout]
+   (let [response-channel-key (response-channel-key)]
+     (interceptor/interceptor
+      {:enter
+       (fn [ctx]
+         (let [response-channel (f (ctx->bifrost-request ctx))]
+           (assoc-in ctx [:response-channels response-channel-key]
+                     response-channel)))
+       :leave
+       (fn [ctx]
+         (if-let [response (async/alt!!
+                             (async/timeout timeout)
+                             timeout-response
+
+                             (get-in ctx [:response-channels response-channel-key])
+                             ([r]
+                              (when r
+                                (api-response->ctx r))))]
+           (merge ctx response)
+           ctx))}))))
+
+(defn interceptor
+  ([fn-or-chan]
+   (interceptor fn-or-chan default-timeout))
+  ([fn-or-chan timeout]
+   (if (fn? fn-or-chan)
+     (fn-interceptor fn-or-chan timeout)
+     (let [request-ch (async/chan 1 interceptor-xf)]
+       (async/pipe request-ch fn-or-chan)
+       (async-interceptor request-ch
+                          (response-channel-key)
+                          api-response-xf
+                          timeout)))))
