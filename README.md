@@ -14,7 +14,7 @@ A Clojure library for building HTTP API gateways using Pedestal and core.async.
 Add the library as a dependency in your project.clj:
 
 ```clojure
-[democracyworks/bifrost "0.1.4"]
+[democracyworks/bifrost "0.2.0"]
 ```
 
 Require the core namespace in your pedestal service namespace:
@@ -149,7 +149,7 @@ Use of these interceptors is optional.
 
 ## License
 
-Copyright © 2015-2016 Democracy Works, Inc.
+Copyright © 2015-2017 Democracy Works, Inc.
 
 Distributed under the Mozilla Public License either version 2.0 or (at
 your option) any later version.

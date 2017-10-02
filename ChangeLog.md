@@ -1,6 +1,6 @@
 # Change Log
 
-## Changes between 0.1.5 and HEAD
+## Changes between 0.1.5 and 0.2.0
 
 * `bifrost.core/interceptor` is no longer a macro.
 * The first argument `bifrost.core/interceptor`, instead of being an
