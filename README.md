@@ -98,21 +98,28 @@ Responses should be EDN maps that look like the following:
 
 ```clojure
 {:status :ok} ; plus any other keys and values you'd like to add
+
+;; or for errors
+{:status :error
+ :error {:type :timeout}}
 ```
 
 `:status` can be any of:
-    * `:ok` - HTTP 200 response
-    * `:created` - HTTP 201 response
-    * `:error`
-    * With `:error`, you can add an optional `:type` key whose value
-      can be any of:
-      * `:semantic` - HTTP 400 response
-      * `:validation` - HTTP 400 response
-      * `:not-found` - HTTP 404 response
-      * `:server` - HTTP 500 response
-      * `:timeout` - HTTP 504 response
-      * if `:type` is ommitted - HTTP 500 response
-      * (more to come)
+
+* `:ok` - HTTP 200 response
+* `:created` - HTTP 201 response
+* `:error` - based on the `:type` key in the `:error` map
+
+`:error` statuses may optionally include an `:error` map with a `:type` key.
+In this case, the HTTP response is determined by `:type`
+
+* `:semantic` - HTTP 400 response
+* `:validation` - HTTP 400 response
+* `:not-found` - HTTP 404 response
+* `:server` - HTTP 500 response
+* `:timeout` - HTTP 504 response
+* without a `:type` - HTTP 500 response
+* (more to come)
 
 If you want to add anything else to the `params-map`, then just put an
 interceptor in front of your core.async interceptor that adds keys & values to
