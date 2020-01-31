@@ -54,6 +54,9 @@
   {:response {:status 504
               :body "Bifrost timeout"}})
 
+(def channel-closed-response
+  {:response {:status 500
+              :body "Channel was closed unexpectedly"}})
 
 (defn response-channel-key []
   (keyword (gensym "bifrost-response-channel-")))
@@ -122,3 +125,26 @@
    (if (fn? fn-or-chan)
      (fn-interceptor fn-or-chan timeout)
      (fn-interceptor (channel-adapter fn-or-chan) timeout))))
+
+(defn fn-handler
+  [f timeout]
+  (interceptor* (comp f ctx->bifrost-request)
+                (fn [response]
+                  (or (api-response->ctx response)
+                      channel-closed-response))
+                timeout))
+
+(defn handler
+  "Like `interceptor`, but instead of ignoring closed channels, assocs
+  `channel-closed-response` onto the context.
+
+  This assumes that no other interceptor has access to the response channel.
+  Generally speaking this should be used as a pedestal handler (i.e. last
+  interceptor in the chain) to insure that no other interceptor has touched the
+  response channel."
+  ([fn-or-chan]
+   (handler fn-or-chan default-timeout))
+  ([fn-or-chan timeout]
+   (if (fn? fn-or-chan)
+     (fn-handler fn-or-chan timeout)
+     (fn-handler (channel-adapter fn-or-chan) timeout))))
