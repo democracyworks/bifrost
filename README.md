@@ -79,6 +79,10 @@ transform the response into a context with a response and merge it
 with the incoming context. If it cannot take from the response channel
 within the timeout, it will create a 504 response.
 
+For interceptors that should have exclusive access to the response channel, use
+`handler` instead, which assocs a 500 response when the response channel closes
+unexpectedly.
+
 Bifrost requests are Pedestal requests with the following changes:
 
 * On GET and DELETE
