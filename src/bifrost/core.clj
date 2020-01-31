@@ -59,6 +59,15 @@
   (keyword (gensym "bifrost-response-channel-")))
 
 (defn interceptor*
+  "The main interceptor logic. Saves a channel on the context in the `:enter`
+  handler, and tries to take off of it in the `:leave` handler. Assocs a 504
+  response if `timeout` is reached before the channel has a result.
+
+  `->chan` is a function taking a context and returning an async channel that
+  will eventually contain a response.
+
+  `->response` is a function taking a (possibly nil) response that returns data
+  to merge into the context."
   [->chan ->response timeout]
   (let [response-channel-key (response-channel-key)]
     (interceptor/interceptor
@@ -96,6 +105,17 @@
         response-channel))))
 
 (defn interceptor
+  "Returns an async channel-based interceptor. Takes either a function
+  returning a response channel, or a channel that accepts requests of the form
+  `[response-channel ctx]` and places a single response on `response-channel`.
+
+  Three results are possible:
+  1. A response is available within `timeout`: coerces the response to a ring
+     response and assocs it onto the context.
+  2. A response is not available within `timeout`: assocs `timeout-response`
+     onto the context.
+  3. The channel closes without a response: returns context as-is on the
+     assumption that another interceptor handled the response."
   ([fn-or-chan]
    (interceptor fn-or-chan default-timeout))
   ([fn-or-chan timeout]
