@@ -127,10 +127,6 @@ the `[:request :bifrost-params]` key path in the context.
 Bifrost will then merge the `:bifrost-params` value into everything
 else so those keys will clobber the others in the final `params-map`.
 
-The `async-interceptor` function is available if you want more control
-over what happens to the messages sent and consumed by the
-interceptor.
-
 ### Update Interceptors
 
 The `bifrost.interceptors` namespace includes some handy interceptors for
