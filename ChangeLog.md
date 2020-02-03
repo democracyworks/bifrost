@@ -1,5 +1,13 @@
 # Change Log
 
+## Changes between 0.2.0 and 0.3.0
+
+* **[Breaking]**: removed the lower-level `bifrost.core/async-interceptor`
+  function.
+* Added a new `bifrost.core/handler` function that works like
+  `bifrost.core/interceptor`, but assocs an error response if the channel is
+  already closed.
+
 ## Changes between 0.1.5 and 0.2.0
 
 * `bifrost.core/interceptor` is no longer a macro.

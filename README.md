@@ -79,6 +79,10 @@ transform the response into a context with a response and merge it
 with the incoming context. If it cannot take from the response channel
 within the timeout, it will create a 504 response.
 
+For interceptors that should have exclusive access to the response channel, use
+`handler` instead, which assocs a 500 response when the response channel closes
+unexpectedly.
+
 Bifrost requests are Pedestal requests with the following changes:
 
 * On GET and DELETE
@@ -126,10 +130,6 @@ interceptor in front of your core.async interceptor that adds keys & values to
 the `[:request :bifrost-params]` key path in the context.
 Bifrost will then merge the `:bifrost-params` value into everything
 else so those keys will clobber the others in the final `params-map`.
-
-The `async-interceptor` function is available if you want more control
-over what happens to the messages sent and consumed by the
-interceptor.
 
 ### Update Interceptors
 
