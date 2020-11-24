@@ -7,8 +7,6 @@
 
 A Clojure library for building HTTP API gateways using Pedestal and core.async.
 
-[![Build Status](https://travis-ci.org/democracyworks/bifrost.svg?branch=master)](https://travis-ci.org/democracyworks/bifrost)
-
 ## Usage
 
 Add the library as a dependency in your project.clj:
